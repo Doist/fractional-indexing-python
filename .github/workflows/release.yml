@@ -1,8 +1,7 @@
 name: Release
 
-# Manually-triggered release to Doist's AWS CodeArtifact index, modeled on
-# Doist/billist's release workflow. Requires the AWS_CODEARTIFACT_TOKEN repo
-# secret (kept fresh by update-aws-codeartifact-token.yml).
+# Manually-triggered release to Doist's AWS CodeArtifact index. Publishes via
+# the GitHub OIDC role below; no repo secrets needed.
 on:
   workflow_dispatch:
     inputs:
@@ -14,6 +13,9 @@ on:
 
 concurrency: deploy
 
+env:
+  AWS_ROLE: arn:aws:iam::011833101604:role/github-roles-FractionalIndexingPython-73esVaEfRRD9
+
 jobs:
   release:
     name: Release
@@ -21,6 +23,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Get latest code
         uses: actions/checkout@v4
@@ -51,12 +54,21 @@ jobs:
       - name: Build package
         run: uv build
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          role-duration-seconds: 900
+          aws-region: us-east-1
+
       - name: Publish package
         env:
           UV_PUBLISH_URL: https://doist-011833101604.d.codeartifact.us-east-1.amazonaws.com/pypi/doist/
           UV_PUBLISH_USERNAME: aws
-          UV_PUBLISH_PASSWORD: ${{ secrets.AWS_CODEARTIFACT_TOKEN }}
-        run: uv publish
+        run: |
+          UV_PUBLISH_PASSWORD=$(aws codeartifact get-authorization-token --domain doist --domain-owner 011833101604 --query authorizationToken --output text)
+          export UV_PUBLISH_PASSWORD
+          uv publish
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
