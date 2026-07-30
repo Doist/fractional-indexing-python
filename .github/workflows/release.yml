@@ -1,0 +1,66 @@
+name: Release
+
+# Manually-triggered release to Doist's AWS CodeArtifact index, modeled on
+# Doist/billist's release workflow. Requires the AWS_CODEARTIFACT_TOKEN repo
+# secret (kept fresh by update-aws-codeartifact-token.yml).
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump (none releases the version already in pyproject.toml)"
+        type: choice
+        options: [none, patch, minor, major]
+        default: patch
+
+concurrency: deploy
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Get latest code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Increment version
+        id: version
+        run: |
+          if [ "${{ inputs.bump }}" != "none" ]; then
+            uv version --bump "${{ inputs.bump }}"
+          fi
+          echo "version=$(uv version --short)" >> $GITHUB_OUTPUT
+
+      - name: Commit updated version
+        if: ${{ inputs.bump != 'none' }}
+        uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+        with:
+          commit_message: "chore: bump version to ${{ steps.version.outputs.version }}"
+          file_pattern: "pyproject.toml uv.lock"
+
+      - name: Run tests
+        run: uv run --group dev pytest tests.py
+
+      - name: Build package
+        run: uv build
+
+      - name: Publish package
+        env:
+          UV_PUBLISH_URL: https://doist-011833101604.d.codeartifact.us-east-1.amazonaws.com/pypi/doist/
+          UV_PUBLISH_USERNAME: aws
+          UV_PUBLISH_PASSWORD: ${{ secrets.AWS_CODEARTIFACT_TOKEN }}
+        run: uv publish
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
+          generate_release_notes: true

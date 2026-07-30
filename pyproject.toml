@@ -1,18 +1,34 @@
-[tool.poetry]
-name = "fractional-indexing"
-version = "0.1.0"
-description = ""
-authors = ["Jakub Roztocil <jakub@httpie.io>"]
+[project]
+name = "doist-fractional-indexing"
+version = "1.0.0"
+description = "Fractional indexing: string order keys that sort lexicographically. Doist fork, byte-for-byte compatible with rocicorp/fractional-indexing v4."
+readme = "README.md"
+license = "CC0-1.0"
+license-files = ["LICENCE"]
+authors = [
+    { name = "Doist Developers", email = "dev@doist.com" },
+    { name = "Jakub Roztocil", email = "jakub@httpie.io" },
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries",
+]
 
-[tool.poetry.dependencies]
-python = ">=3.7, <4"
-coverage = "^6.3.2"
+[project.urls]
+GitHub = "https://github.com/Doist/fractional-indexing-python"
+Upstream = "https://github.com/httpie/fractional-indexing-python"
 
-[tool.poetry.dev-dependencies]
-pytest = "^7.0.1"
-twine = "^3.8.0"
-
+[dependency-groups]
+dev = ["pytest"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["fractional_indexing.py"]
+
+[tool.hatch.build.targets.sdist]
+include = ["fractional_indexing.py", "tests.py", "README.md", "LICENCE"]

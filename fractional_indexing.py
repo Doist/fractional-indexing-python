@@ -16,7 +16,8 @@ from math import floor
 from typing import List, Optional
 
 
-__version__ = '0.2.0'
+# Informational; the authoritative release version lives in pyproject.toml.
+__version__ = '1.0.0'
 __licence__ = 'CC0 1.0 Universal'
 
 __all__ = [

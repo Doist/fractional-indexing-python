@@ -1,5 +1,13 @@
 # Fractional Indexing
 
+> [!NOTE]
+> **This is Doist's fork** of [httpie/fractional-indexing-python](https://github.com/httpie/fractional-indexing-python),
+> modernised to parity with the JS reference [rocicorp/fractional-indexing](https://github.com/rocicorp/fractional-indexing) v4.0.0.
+> It is published to Doist's private AWS CodeArtifact index as **`doist-fractional-indexing`** (the import name is still
+> `fractional_indexing`). The parity changes have been offered upstream in
+> [httpie/fractional-indexing-python#3](https://github.com/httpie/fractional-indexing-python/pull/3), but releases here
+> are not blocked on it.
+
 This is based on [Implementing Fractional Indexing
 ](https://observablehq.com/@dgreensp/implementing-fractional-indexing) by [David Greenspan
 ](https://github.com/dgreensp).
