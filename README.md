@@ -149,6 +149,12 @@ This is a Python port of the original JavaScript implementation by [@rocicorp](h
 
 ## Changelog
 
+### 1.0.1
+
+- `generate_n_keys_between()` now raises `FIError` for a negative `n`, instead of silently returning a single key
+  (one bound `None`) or hitting `RecursionError` (both bounds set). Deviation from the JS reference, which only
+  documents the `n >= 0` precondition.
+
 ### 0.2.0
 
 Brings the library to parity with [rocicorp/fractional-indexing](https://github.com/rocicorp/fractional-indexing)
