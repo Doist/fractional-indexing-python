@@ -11,6 +11,7 @@ which is based on
 """
 from __future__ import annotations
 
+import random
 from functools import lru_cache
 from math import floor
 from typing import List, Optional
@@ -24,6 +25,7 @@ __all__ = [
     'BASE_62_DIGITS',
     'BASE_52_DIGITS',
     'FIError',
+    'generate_jittered_key_between',
     'generate_key_between',
     'generate_n_keys_between',
     'validate_order_key',
@@ -347,6 +349,10 @@ def generate_key_between(
     makes the keys self-headed; only omitting `digits` entirely yields the
     A-Z/a-z heads.
 
+    This function is deterministic: concurrent writers inserting between the
+    same pair of keys will generate the same key. If that can happen in your
+    application, consider `generate_jittered_key_between()`.
+
     >>> generate_key_between(None, None)
     'a0'
     >>> generate_key_between(None, None, '0123456789')
@@ -400,6 +406,69 @@ def generate_key_between(
     if i < b:
         return i
     return ia + _midpoint(fa, None, digits, lookup)
+
+
+# Default RNG for generate_jittered_key_between(). Jitter is collision
+# avoidance, not security, so a plain seeded-from-OS Random is fine.
+_jitter_rng = random.Random()
+
+
+def generate_jittered_key_between(
+    a: Optional[str],
+    b: Optional[str],
+    digits: Optional[str] = None,
+    int_digits: Optional[str] = None,
+    jitter_length: int = 3,
+    rng: Optional[random.Random] = None,
+) -> str:
+    """
+    Like `generate_key_between()`, but appends `jitter_length` random digits to
+    the generated key.
+
+    `generate_key_between()` is deterministic, so two writers concurrently
+    inserting between the same pair of keys generate the *same* key - and a
+    later insert between two equal keys raises FIError. The random suffix makes
+    simultaneous identical inserts diverge with probability roughly
+    1 - len(digits) ** -jitter_length, at the cost of `jitter_length` extra
+    characters per key.
+
+    The result is a valid order key strictly between `a` and `b`. In one corner
+    case the suffix is skipped and the plain key returned unchanged: when the
+    generated key is a prefix of the upper bound (e.g. "a5" between "a4" and
+    "a52"), where appending anything could push the key past the bound.
+
+    `rng` is the random source (a `random.Random`); pass a seeded instance for
+    reproducible output. Jitter is collision avoidance, not security - do not
+    use keys as unguessable tokens.
+
+    There is deliberately no jittered variant of `generate_n_keys_between()`:
+    its results routinely contain keys that are prefixes of their neighbours,
+    so suffixes could reorder them - and bulk generation is a single-writer
+    operation with no concurrent-collision problem to solve.
+
+    >>> generate_jittered_key_between(None, None, rng=random.Random(42))
+    'a0e72'
+
+    """
+    digits, int_digits = _resolve_alphabets(digits, int_digits)
+    if jitter_length < 0:
+        raise FIError(f'jitter_length must be >= 0: {jitter_length}')
+    key = generate_key_between(a, b, digits, int_digits)
+    if jitter_length == 0:
+        return key
+    # generate_key_between() accepts its bounds in either order, so normalise
+    # before checking against the effective upper bound.
+    if a is not None and b is not None and a > b:
+        a, b = b, a
+    if b is not None and b.startswith(key):
+        return key
+    if rng is None:
+        rng = _jitter_rng
+    # The suffix extends the key's fractional part, so its last character must
+    # not be the zero digit (order keys may not end in zero). Any character
+    # sequence is valid in the middle.
+    suffix = ''.join(rng.choice(digits) for _ in range(jitter_length - 1))
+    return key + suffix + rng.choice(digits[1:])
 
 
 def generate_n_keys_between(

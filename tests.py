@@ -1,3 +1,4 @@
+import random
 from typing import Optional
 
 import pytest
@@ -6,6 +7,7 @@ from fractional_indexing import (
     BASE_52_DIGITS,
     BASE_62_DIGITS,
     FIError,
+    generate_jittered_key_between,
     generate_key_between,
     generate_n_keys_between,
     validate_order_key,
@@ -259,6 +261,79 @@ def test_negative_n_rejected(a: Optional[str], b: Optional[str]) -> None:
     with pytest.raises(FIError) as e:
         generate_n_keys_between(a, b, -1)
     assert e.value.args[0] == 'n must be >= 0: -1'
+
+
+def test_jittered_key_appends_suffix() -> None:
+    rng = random.Random(42)
+    key = generate_jittered_key_between(None, None, rng=rng)
+    base = generate_key_between(None, None)
+    assert key.startswith(base)
+    assert len(key) == len(base) + 3
+    validate_order_key(key)
+
+
+def test_jittered_key_seeded_rng_is_reproducible() -> None:
+    first = generate_jittered_key_between('a0', 'a1', rng=random.Random(7))
+    second = generate_jittered_key_between('a0', 'a1', rng=random.Random(7))
+    assert first == second
+    assert 'a0' < first < 'a1'
+
+
+def test_jittered_key_default_rng() -> None:
+    key = generate_jittered_key_between('a0', 'a1')
+    assert 'a0' < key < 'a1'
+    validate_order_key(key)
+
+
+def test_jittered_key_length_zero_matches_plain_key() -> None:
+    assert generate_jittered_key_between('a0', 'a1', jitter_length=0) == generate_key_between('a0', 'a1')
+
+
+def test_jittered_key_negative_length_rejected() -> None:
+    with pytest.raises(FIError) as e:
+        generate_jittered_key_between(None, None, jitter_length=-1)
+    assert e.value.args[0] == 'jitter_length must be >= 0: -1'
+
+
+@pytest.mark.parametrize(['a', 'b'], [
+    ('a4', 'a52'),
+    # bounds may be passed in either order; the guard must apply to the
+    # effective upper bound
+    ('a52', 'a4'),
+])
+def test_jittered_key_skips_jitter_when_key_prefixes_upper_bound(a: str, b: str) -> None:
+    # generate_key_between('a4', 'a52') returns 'a5', a prefix of the upper
+    # bound: appending any suffix could push the key past 'a52', so the plain
+    # key must be returned unchanged.
+    assert generate_jittered_key_between(a, b, rng=random.Random(1)) == 'a5'
+
+
+def test_jittered_key_custom_alphabet_avoids_trailing_zero() -> None:
+    # base 2: with only '0' and '1' available, the suffix's last character must
+    # always be '1' (order keys may not end in the zero digit).
+    for seed in range(20):
+        key = generate_jittered_key_between(None, None, '01', BASE_52_DIGITS, rng=random.Random(seed))
+        assert key[-1] == '1'
+        validate_order_key(key, '01', BASE_52_DIGITS)
+
+
+@pytest.mark.parametrize('jitter_length', [1, 3, 8])
+def test_jittered_key_ordering_property(jitter_length: int) -> None:
+    # Same insertion-hammering property test as test_ordering, but through the
+    # jittered function: every result must stay strictly within its bounds and
+    # the list must remain lexicographically sorted.
+    rnd = LCG()
+    rng = random.Random(99)
+    keys = []
+    for _ in range(1000):
+        pos = int(rnd.random() * (len(keys) + 1))
+        a = keys[pos - 1] if pos > 0 else None
+        b = keys[pos] if pos < len(keys) else None
+        k = generate_jittered_key_between(a, b, jitter_length=jitter_length, rng=rng)
+        assert (a is None or a < k) and (b is None or k < b), f'out of range: {a} < {k} < {b}'
+        validate_order_key(k)
+        keys.insert(pos, k)
+    assert keys == sorted(keys)
 
 
 def test_readme_examples_single_key():

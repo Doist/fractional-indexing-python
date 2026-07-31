@@ -94,6 +94,29 @@ except FIError as e:
 
 ```
 
+### Jittered keys for concurrent inserts
+
+`generate_key_between()` is deterministic: two devices concurrently inserting between the same pair of keys generate
+the *same* key, and a later insert between two equal keys raises `FIError`. When concurrent writers are possible, use
+`generate_jittered_key_between()`, which appends a few random digits (default 3) so simultaneous identical inserts
+diverge with high probability:
+
+```python
+import random
+
+from fractional_indexing import generate_jittered_key_between
+
+
+key = generate_jittered_key_between('a0', 'a1')                          # e.g. 'a0Vk2P'
+key = generate_jittered_key_between('a0', 'a1', jitter_length=4)         # longer suffix, lower collision odds
+key = generate_jittered_key_between('a0', 'a1', rng=random.Random(42))   # seeded for reproducible tests
+
+```
+
+The result is always a valid order key strictly between the bounds. In one corner case (the generated key is a prefix
+of the upper bound) the suffix is skipped and the plain key returned. There is deliberately no jittered variant of
+`generate_n_keys_between()` — bulk generation is single-writer, and suffixes could reorder prefix-related neighbours.
+
 ### Use custom base digits
 
 By default, this library uses Base62 character encoding. To use a different set of digits, pass them in as the `digits`
@@ -148,6 +171,12 @@ This is a Python port of the original JavaScript implementation by [@rocicorp](h
 | Ruby       | https://github.com/kazu-2020/fractional_indexer       |
 
 ## Changelog
+
+### 1.1.0
+
+- New `generate_jittered_key_between()`: appends `jitter_length` (default 3) random digits so concurrent inserts
+  between the same pair of keys diverge instead of colliding. Takes an optional seeded `rng` for reproducibility.
+  Skips the suffix in the one corner case where the generated key is a prefix of the upper bound.
 
 ### 1.0.1
 
