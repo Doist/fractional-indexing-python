@@ -1,6 +1,6 @@
 [project]
 name = "doist-fractional-indexing"
-version = "1.0.0"
+version = "1.1.0"
 description = "Fractional indexing: string order keys that sort lexicographically. Doist fork, byte-for-byte compatible with rocicorp/fractional-indexing v4."
 readme = "README.md"
 license = "CC0-1.0"
