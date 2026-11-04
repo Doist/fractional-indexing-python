@@ -15,3 +15,14 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - run: pip install pytest
       - run: pytest tests.py --verbose
+      # The tests above run without the package installed, so they only see
+      # the 0.0.0 fallback. This checks the installed path reads a version.
+      - name: Check the installed version
+        run: |
+          pip install .
+          INSTALLED_VERSION=$(python -c 'import fractional_indexing; print(fractional_indexing.__version__)')
+          echo "Installed version: $INSTALLED_VERSION"
+          if [ "$INSTALLED_VERSION" = "0.0.0" ]; then
+            echo "::error::__version__ fell back to 0.0.0 in an installed build."
+            exit 1
+          fi

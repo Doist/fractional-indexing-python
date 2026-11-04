@@ -85,9 +85,16 @@ jobs:
           esac
           NEXT_VERSION="$MAJOR.$MINOR.$PATCH"
 
-          # Ask the remote, in case a tag was pushed after the checkout.
-          if git ls-remote --exit-code --tags origin "refs/tags/v$NEXT_VERSION" > /dev/null; then
+          # Ask the remote, in case a tag was pushed after the checkout. Exit
+          # code 2 means the tag is missing; any other failure means the lookup
+          # itself failed, so the check didn't happen.
+          LOOKUP_STATUS=0
+          git ls-remote --exit-code --tags origin "refs/tags/v$NEXT_VERSION" > /dev/null || LOOKUP_STATUS=$?
+          if [ "$LOOKUP_STATUS" -eq 0 ]; then
             echo "::error::Tag v$NEXT_VERSION already exists."
+            exit 1
+          elif [ "$LOOKUP_STATUS" -ne 2 ]; then
+            echo "::error::Could not check the remote for tag v$NEXT_VERSION."
             exit 1
           fi
 
