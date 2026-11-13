@@ -13,12 +13,16 @@ from __future__ import annotations
 
 import random
 from functools import lru_cache
+from importlib import metadata
 from math import floor
 from typing import List, Optional
 
 
-# Informational; the authoritative release version lives in pyproject.toml.
-__version__ = '1.0.0'
+try:
+    __version__ = metadata.version('doist-fractional-indexing')
+except metadata.PackageNotFoundError:
+    # Imported from a checkout without installing it, as the Test workflow does.
+    __version__ = '0.0.0'
 __licence__ = 'CC0 1.0 Universal'
 
 __all__ = [

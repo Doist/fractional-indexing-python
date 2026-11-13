@@ -1,6 +1,7 @@
 [project]
 name = "doist-fractional-indexing"
-version = "1.1.0"
+# The version comes from git tags (see [tool.hatch.version]).
+dynamic = ["version"]
 description = "Fractional indexing: string order keys that sort lexicographically. Doist fork, byte-for-byte compatible with rocicorp/fractional-indexing v4."
 readme = "README.md"
 license = "CC0-1.0"
@@ -24,8 +25,21 @@ Upstream = "https://github.com/httpie/fractional-indexing-python"
 dev = ["pytest"]
 
 [build-system]
-requires = ["hatchling>=1.27"]
+requires = ["hatchling>=1.27", "hatch-vcs>=0.4,<1"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+# The version comes from the v* git tags, so it isn't written in this file.
+# The release workflow builds with SETUPTOOLS_SCM_PRETEND_VERSION set to the
+# released version. Any other build gets a dev version after the latest tag,
+# or the fallback when there's no git metadata at all.
+source = "vcs"
+fallback-version = "0.0.0"
+# Only vX.Y.Z tags are releases. The legacy 0.1.x tags, and the tags of the
+# upstream repo this one forks, must never set the version. Same pattern as
+# RELEASE_TAG in release.yml.
+tag-pattern = '^v(?P<version>(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*))$'
+raw-options = { scm = { git = { describe_command = "git describe --dirty --tags --long --match v[0-9]*.[0-9]*.[0-9]*" } } }
 
 [tool.hatch.build.targets.wheel]
 only-include = ["fractional_indexing.py"]
